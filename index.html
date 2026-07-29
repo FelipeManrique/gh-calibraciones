@@ -4,33 +4,440 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard de Calibraciones — GH Consultora</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-  :root{ --brand-dark:#4a7a1e; --brand:#8dc63f; --ink:#2b2f26; --ink-soft:#5b6058; --bg:#f7f8f4; }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-    background:var(--bg); color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    text-align:center; padding:24px;
+  :root{
+    --verde:      #4c9a2a; --verde-bg:   #eaf4e2;
+    --amarillo:   #b8860b; --amarillo-bg:#fbf1d6;
+    --naranja:    #c56a15; --naranja-bg: #fbe6d2;
+    --rojo:       #b3261e; --rojo-bg:    #f9e0de;
+    --gris:       #6b7280; --gris-bg:    #eceff1;
+    --ink:        #2b2f26; --ink-soft:   #5b6058;
+    --line:       #dfe3da; --bg:         #f7f8f4; --card:#ffffff;
+    --brand-dark: #4a7a1e; --brand: #8dc63f; --radius:12px;
   }
-  .card{ max-width:440px; }
-  .logo{ font-weight:800; font-size:40px; letter-spacing:-1px;
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  a{color:inherit;}
+
+  /* ---------- login screen ---------- */
+  #loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px; text-align:center; padding:24px; }
+  #loginScreen .logo{ font-weight:800; font-size:40px; letter-spacing:-1px;
     background:linear-gradient(135deg, var(--brand-dark), var(--brand));
-    -webkit-background-clip:text; background-clip:text; color:transparent; margin-bottom:8px; }
-  h1{ font-size:20px; margin:0 0 6px; }
-  p{ color:var(--ink-soft); font-size:14px; line-height:1.5; }
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #loginScreen h1{ font-size:20px; margin:0; }
+  #loginScreen p{ color:var(--ink-soft); font-size:14px; max-width:360px; margin:0; }
+  #loginError{ color:var(--rojo); font-size:13.5px; font-weight:600; display:none; max-width:360px; }
+  #loginSpinner{ display:none; color:var(--ink-soft); font-size:13px; }
+
+  /* ---------- dashboard screen ---------- */
+  #dashboardScreen{ display:none; }
+  header{ background:linear-gradient(180deg, #ffffff 0%, #f2f6ec 100%); border-bottom:1px solid var(--line);
+    padding:20px 28px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:16px; }
+  .logo-wrap{ width:56px;height:56px;flex:0 0 auto;display:flex;align-items:center;justify-content:center; }
+  .logo-wrap img{max-width:100%;max-height:100%;display:block;}
+  .logo-fallback{ font-weight:800; font-size:26px; letter-spacing:-1px;
+    background:linear-gradient(135deg, var(--brand-dark), var(--brand)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand-text h1{ font-size:19px; margin:0 0 2px 0; font-weight:700; }
+  .brand-text .sub{ font-size:12.5px; color:var(--ink-soft); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+  .account{ text-align:right; font-size:13px; color:var(--ink-soft); }
+  .account b{color:var(--brand-dark);font-size:14px;display:block;}
+  .account button{ margin-top:4px; border:none; background:none; color:var(--ink-soft); text-decoration:underline; cursor:pointer; font-size:12px; padding:0; }
+
+  main{max-width:1200px;margin:0 auto;padding:22px 28px 60px;}
+
+  .stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+  .stat{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; cursor:pointer; }
+  .stat:hover{box-shadow:0 3px 10px rgba(0,0,0,.06);}
+  .stat.active{outline:2px solid var(--brand-dark);}
+  .stat .n{font-size:26px;font-weight:800;line-height:1;}
+  .stat .l{font-size:12px;color:var(--ink-soft);margin-top:4px;font-weight:600;}
+  .stat.tot .n{color:var(--ink);} .stat.verde .n{color:var(--verde);} .stat.amarillo .n{color:var(--amarillo);}
+  .stat.naranja .n{color:var(--naranja);} .stat.rojo .n{color:var(--rojo);}
+
+  .legend{ display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin-bottom:20px;font-size:12.5px;color:var(--ink-soft); }
+  .legend b{color:var(--ink);margin-right:2px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .dot.verde{background:var(--verde);} .dot.amarillo{background:var(--amarillo);} .dot.naranja{background:var(--naranja);}
+  .dot.rojo{background:var(--rojo);} .dot.gris{background:var(--gris);}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:12px;flex-wrap:wrap;}
+  .search{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:var(--card);}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn:hover{border-color:var(--brand-dark);color:var(--brand-dark);}
+  .btn.primary{background:var(--brand-dark);border-color:var(--brand-dark);color:#fff;}
+  .btn.primary:hover{opacity:.9;color:#fff;}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);
+    padding:12px 14px;border-bottom:1px solid var(--line);background:#fbfbf8;}
+  tbody td{padding:13px 14px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:#f3f7ee;}
+  .equipo-name{font-weight:700;}
+  .equipo-meta{color:var(--ink-soft);font-size:12px;margin-top:2px;line-height:1.4;}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;}
+  .badge.verde{background:var(--verde-bg);color:var(--verde);} .badge.amarillo{background:var(--amarillo-bg);color:var(--amarillo);}
+  .badge.naranja{background:var(--naranja-bg);color:var(--naranja);} .badge.rojo{background:var(--rojo-bg);color:var(--rojo);}
+  .badge.gris{background:var(--gris-bg);color:var(--gris);}
+  .dias{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .pdf-link{font-size:11.5px;color:var(--brand-dark);font-weight:700;margin-top:4px;display:inline-block;}
+  .no-pdf{font-size:11.5px;color:var(--ink-soft);}
+  footer{max-width:1200px;margin:0 auto;padding:6px 28px 40px;font-size:11.5px;color:var(--ink-soft);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+  /* ---------- upload modal ---------- */
+  #modalOverlay{ display:none; position:fixed; inset:0; background:rgba(20,23,15,.45); align-items:center; justify-content:center; padding:20px; z-index:50; }
+  #modalCard{ background:var(--card); border-radius:var(--radius); padding:24px; width:100%; max-width:420px; }
+  #modalCard h2{margin:0 0 4px;font-size:17px;}
+  #modalCard p.hint{margin:0 0 16px;font-size:12.5px;color:var(--ink-soft);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:5px;}
+  .field select, .field input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;}
+  #modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+  #uploadStatus{font-size:12.5px;margin-top:10px;min-height:16px;}
+  #uploadStatus.err{color:var(--rojo);} #uploadStatus.ok{color:var(--verde);}
+
+  @media (max-width:820px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    thead{display:none;}
+    table, tbody, tr, td{display:block;width:100%;}
+    tbody tr{border-bottom:1px solid var(--line);padding:10px 0;}
+    tbody td{border-bottom:none;padding:4px 14px;}
+  }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#14170f; --ink:#eef0e8; --ink-soft:#a7ad9d; }
+    :root{ --bg:#14170f; --card:#1c211a; --ink:#eef0e8; --ink-soft:#a7ad9d; --line:#2a2f24;
+      --verde-bg:#1d2b16; --amarillo-bg:#2b230f; --naranja-bg:#2b1f10; --rojo-bg:#2b1513; --gris-bg:#22261f; }
+    header{background:linear-gradient(180deg,#181c13 0%, #14170f 100%);}
+    thead th{background:#181c13;}
+    #modalCard select, #modalCard input{background:#14170f;color:var(--ink);}
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">GH</div>
-    <h1>Dashboard de Calibraciones</h1>
-    <p>GH Consultora · Mediciones y Monitoreos<br><br>
-    El acceso con inicio de sesión de Google está en construcción.<br>
-    Esta URL va a quedar activa próximamente.</p>
+
+<div id="loginScreen">
+  <div class="logo">GH</div>
+  <h1>Dashboard de Calibraciones</h1>
+  <p>GH Consultora · Mediciones y Monitoreos<br>Iniciá sesión con una cuenta de Google autorizada para ver el estado de calibración de los equipos.</p>
+  <div id="gsiButton"></div>
+  <div id="loginSpinner">Verificando acceso...</div>
+  <div id="loginError"></div>
+</div>
+
+<div id="dashboardScreen">
+  <header>
+    <div class="brand">
+      <div class="logo-wrap">
+        <img src="logo_gh.png" alt="GH Consultora" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="logo-fallback" style="display:none;">GH</div>
+      </div>
+      <div class="brand-text">
+        <h1>Dashboard de Calibraciones</h1>
+        <div class="sub">Equipos de medición y monitoreo</div>
+      </div>
+    </div>
+    <div class="account">
+      <b id="accountEmail"></b>
+      GH Consultora · Mediciones y Monitoreos
+      <button id="signOutBtn">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="stats" id="stats">
+      <div class="stat tot" data-filter="todos"><div class="n" id="stTodos">0</div><div class="l">Total equipos</div></div>
+      <div class="stat verde" data-filter="verde"><div class="n" id="stVerde">0</div><div class="l">Vigentes (+3 meses)</div></div>
+      <div class="stat amarillo" data-filter="amarillo"><div class="n" id="stAmarillo">0</div><div class="l">A 2 meses de vencer</div></div>
+      <div class="stat naranja" data-filter="naranja"><div class="n" id="stNaranja">0</div><div class="l">A 1 mes de vencer</div></div>
+      <div class="stat rojo" data-filter="rojo"><div class="n" id="stRojo">0</div><div class="l">Vencidas</div></div>
+    </div>
+
+    <div class="legend">
+      <b>Referencias:</b>
+      <span class="chip"><span class="dot verde"></span> Verde — más de 90 días para vencer</span>
+      <span class="chip"><span class="dot amarillo"></span> Amarillo — entre 61 y 90 días</span>
+      <span class="chip"><span class="dot naranja"></span> Naranja — entre 1 y 60 días</span>
+      <span class="chip"><span class="dot rojo"></span> Rojo — vencida</span>
+      <span class="chip"><span class="dot gris"></span> Gris — sin calibración registrada</span>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" class="search" id="search" placeholder="Buscar equipo, marca o modelo...">
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="clearFilter">Ver todos</button>
+        <button class="btn" id="refreshBtn" title="Releer los datos desde el servidor">Actualizar</button>
+        <button class="btn primary" id="openUploadBtn">+ Cargar certificado</button>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:24%">Equipo</th>
+          <th style="width:30%">Qué mide / Marca / Modelo</th>
+          <th style="width:13%">Calibración</th>
+          <th style="width:13%">Vencimiento</th>
+          <th style="width:20%">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </main>
+
+  <footer>
+    <span>Fuente de datos: Google Sheet conectada al backend. El semáforo se recalcula solo cada vez que se abre esta página, según la fecha de hoy.</span>
+    <span>GH Consultora · Mediciones y Monitoreos</span>
+  </footer>
+</div>
+
+<div id="modalOverlay">
+  <div id="modalCard">
+    <h2>Cargar certificado de calibración</h2>
+    <p class="hint">El PDF se guarda en la carpeta de Drive del año que corresponda y la planilla se actualiza sola.</p>
+    <div class="field">
+      <label for="equipoSelect">Equipo</label>
+      <select id="equipoSelect"></select>
+    </div>
+    <div class="field">
+      <label for="fechaCalInput">Fecha de calibración</label>
+      <input type="date" id="fechaCalInput">
+    </div>
+    <div class="field">
+      <label for="fechaVencInput">Vencimiento (se sugiere +1 año, editable)</label>
+      <input type="date" id="fechaVencInput">
+    </div>
+    <div class="field">
+      <label for="pdfInput">Certificado (PDF)</label>
+      <input type="file" id="pdfInput" accept="application/pdf">
+    </div>
+    <div id="uploadStatus"></div>
+    <div id="modalActions">
+      <button class="btn" id="cancelUploadBtn">Cancelar</button>
+      <button class="btn primary" id="submitUploadBtn">Guardar</button>
+    </div>
   </div>
+</div>
+
+<script>
+  var CLIENT_ID = '585469655594-8aj9hjmf7d4noglr1th673dbiia8ftkv.apps.googleusercontent.com';
+  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwcW1gDc7lPZBmcddKf2uYFQXmwj-JN_SNWaA_yb6fwbmfxMUgrAZxHq34Uiy6cAzY2hQ/exec';
+
+  var idToken = null;
+  var EQUIPOS = [];
+  var currentFilter = 'todos';
+
+  function callBackend(action, extra) {
+    var payload = Object.assign({ action: action, idToken: idToken }, extra || {});
+    return fetch(BACKEND_URL, { method: 'POST', body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); });
+  }
+
+  window.onload = function () {
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
+    google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme: 'outline', size: 'large', text: 'signin_with' });
+  };
+
+  function handleCredentialResponse(response) {
+    idToken = response.credential;
+    document.getElementById('gsiButton').style.display = 'none';
+    document.getElementById('loginSpinner').style.display = 'block';
+    document.getElementById('loginError').style.display = 'none';
+
+    callBackend('getData', {}).then(function (data) {
+      document.getElementById('loginSpinner').style.display = 'none';
+      if (!data.ok) {
+        idToken = null;
+        document.getElementById('gsiButton').style.display = 'block';
+        var err = document.getElementById('loginError');
+        err.textContent = 'Esta cuenta no está autorizada para ver el dashboard. Pedile a GH Consultora que agregue tu email a la lista.';
+        err.style.display = 'block';
+        return;
+      }
+      EQUIPOS = data.equipos;
+      document.getElementById('accountEmail').textContent = data.email;
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboardScreen').style.display = 'block';
+      fillEquipoSelect();
+      render(EQUIPOS);
+    }).catch(function () {
+      document.getElementById('loginSpinner').style.display = 'none';
+      document.getElementById('gsiButton').style.display = 'block';
+      var err = document.getElementById('loginError');
+      err.textContent = 'No se pudo conectar con el backend. Probá de nuevo en un momento.';
+      err.style.display = 'block';
+    });
+  }
+
+  document.getElementById('signOutBtn').addEventListener('click', function () {
+    idToken = null;
+    EQUIPOS = [];
+    google.accounts.id.disableAutoSelect();
+    document.getElementById('dashboardScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('gsiButton').style.display = 'block';
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', function () {
+    callBackend('getData', {}).then(function (data) {
+      if (data.ok) { EQUIPOS = data.equipos; render(EQUIPOS); }
+    });
+  });
+
+  function parseISO(s) {
+    if (!s) return null;
+    var p = s.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+  function fmt(d) { return d ? d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
+  function daysBetween(from, to) { return Math.round((to - from) / (24 * 3600 * 1000)); }
+
+  function estadoDe(item, hoy) {
+    if (!item.fecha_venc) return 'gris';
+    var dias = daysBetween(hoy, parseISO(item.fecha_venc));
+    if (dias <= 0) return 'rojo';
+    if (dias <= 60) return 'naranja';
+    if (dias <= 90) return 'amarillo';
+    return 'verde';
+  }
+  var ESTADO_LABEL = { verde: 'Vigente', amarillo: 'Vence en ~2 meses', naranja: 'Vence en ~1 mes', rojo: 'Vencida', gris: 'Sin calibración' };
+
+  function render(data) {
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    var tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    var counts = { verde: 0, amarillo: 0, naranja: 0, rojo: 0, gris: 0 };
+    var q = (document.getElementById('search').value || '').toLowerCase().trim();
+
+    data.forEach(function (item) {
+      var estado = estadoDe(item, hoy);
+      counts[estado]++;
+      var hay = q === '' || (item.equipo + ' ' + item.marca + ' ' + item.modelo + ' ' + item.que_mide).toLowerCase().indexOf(q) !== -1;
+      var showByFilter = currentFilter === 'todos' || currentFilter === estado;
+      if (!hay || !showByFilter) return;
+
+      var venc = parseISO(item.fecha_venc);
+      var dias = venc ? daysBetween(hoy, venc) : null;
+      var diasTxt = '';
+      if (item.fecha_venc) diasTxt = dias > 0 ? ('Vence en ' + dias + ' días') : ('Vencida hace ' + Math.abs(dias) + ' días');
+
+      var tr = document.createElement('tr');
+      if (item.pdf_file_id) {
+        tr.classList.add('clickable');
+        tr.title = 'Ver certificado de calibración';
+        tr.addEventListener('click', function () { window.open('https://drive.google.com/file/d/' + item.pdf_file_id + '/view', '_blank'); });
+      }
+      tr.innerHTML =
+        '<td><div class="equipo-name">' + item.equipo + '</div>' + (item.serie ? '<div class="equipo-meta">N° serie: ' + item.serie + '</div>' : '') + '</td>' +
+        '<td><div>' + item.que_mide + '</div><div class="equipo-meta">' + item.marca + ' · ' + item.modelo + '</div></td>' +
+        '<td>' + (item.fecha_cal ? fmt(parseISO(item.fecha_cal)) : '—') + '</td>' +
+        '<td>' + (item.fecha_venc ? fmt(venc) : '—') + '</td>' +
+        '<td><span class="badge ' + estado + '"><span class="dot ' + estado + '"></span>' + ESTADO_LABEL[estado] + '</span>' +
+        (diasTxt ? '<div class="dias">' + diasTxt + '</div>' : '') +
+        (item.pdf_file_id ? '<div class="pdf-link">Ver certificado →</div>' : '<div class="no-pdf">' + (item.fecha_venc ? '' : 'Sin certificado en archivo') + '</div>') +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('stTodos').textContent = data.length;
+    document.getElementById('stVerde').textContent = counts.verde;
+    document.getElementById('stAmarillo').textContent = counts.amarillo;
+    document.getElementById('stNaranja').textContent = counts.naranja;
+    document.getElementById('stRojo').textContent = counts.rojo;
+    document.querySelectorAll('.stat').forEach(function (s) { s.classList.toggle('active', s.dataset.filter === currentFilter); });
+  }
+
+  document.getElementById('search').addEventListener('input', function () { render(EQUIPOS); });
+  document.getElementById('clearFilter').addEventListener('click', function () { currentFilter = 'todos'; render(EQUIPOS); });
+  document.querySelectorAll('.stat').forEach(function (s) {
+    s.addEventListener('click', function () { currentFilter = s.dataset.filter; render(EQUIPOS); });
+  });
+
+  /* ---------- upload modal ---------- */
+  function fillEquipoSelect() {
+    var sel = document.getElementById('equipoSelect');
+    sel.innerHTML = '';
+    EQUIPOS.forEach(function (item) {
+      var opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.equipo + (item.serie ? ' (serie ' + item.serie + ')' : '') + ' — ' + item.marca + ' ' + item.modelo;
+      sel.appendChild(opt);
+    });
+  }
+
+  document.getElementById('openUploadBtn').addEventListener('click', function () {
+    document.getElementById('uploadStatus').textContent = '';
+    document.getElementById('uploadStatus').className = '';
+    document.getElementById('pdfInput').value = '';
+    document.getElementById('fechaCalInput').value = '';
+    document.getElementById('fechaVencInput').value = '';
+    document.getElementById('modalOverlay').style.display = 'flex';
+  });
+  document.getElementById('cancelUploadBtn').addEventListener('click', function () {
+    document.getElementById('modalOverlay').style.display = 'none';
+  });
+
+  document.getElementById('fechaCalInput').addEventListener('change', function () {
+    if (!this.value) return;
+    var d = new Date(this.value + 'T00:00:00');
+    d.setFullYear(d.getFullYear() + 1);
+    document.getElementById('fechaVencInput').value = d.toISOString().slice(0, 10);
+  });
+
+  document.getElementById('submitUploadBtn').addEventListener('click', function () {
+    var id = document.getElementById('equipoSelect').value;
+    var fechaCal = document.getElementById('fechaCalInput').value;
+    var fechaVenc = document.getElementById('fechaVencInput').value;
+    var file = document.getElementById('pdfInput').files[0];
+    var status = document.getElementById('uploadStatus');
+
+    if (!fechaCal || !fechaVenc || !file) {
+      status.textContent = 'Completá la fecha de calibración, el vencimiento y elegí el PDF.';
+      status.className = 'err';
+      return;
+    }
+    if (file.type !== 'application/pdf') {
+      status.textContent = 'El archivo tiene que ser un PDF.';
+      status.className = 'err';
+      return;
+    }
+
+    status.textContent = 'Subiendo...';
+    status.className = '';
+    document.getElementById('submitUploadBtn').disabled = true;
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var base64 = reader.result.split(',')[1];
+      callBackend('uploadCertificado', {
+        id: id, fecha_cal: fechaCal, fecha_venc: fechaVenc,
+        filename: file.name, fileBase64: base64
+      }).then(function (data) {
+        document.getElementById('submitUploadBtn').disabled = false;
+        if (!data.ok) {
+          status.textContent = 'Error: ' + (data.error || 'desconocido');
+          status.className = 'err';
+          return;
+        }
+        EQUIPOS = data.equipos;
+        status.textContent = 'Certificado guardado.';
+        status.className = 'ok';
+        render(EQUIPOS);
+        setTimeout(function () { document.getElementById('modalOverlay').style.display = 'none'; }, 900);
+      }).catch(function () {
+        document.getElementById('submitUploadBtn').disabled = false;
+        status.textContent = 'No se pudo conectar con el backend.';
+        status.className = 'err';
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
 </body>
 </html>
