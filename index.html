@@ -110,17 +110,46 @@
     table, tbody, tr, td{display:block;width:100%;}
     tbody tr{border-bottom:1px solid var(--line);padding:10px 0;}
     tbody td{border-bottom:none;padding:4px 14px;}
+    tbody td[data-label]::before{
+      content: attr(data-label);
+      display:block; font-size:10.5px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.04em; color:var(--ink-soft); margin-bottom:2px;
+    }
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#14170f; --card:#1c211a; --ink:#eef0e8; --ink-soft:#a7ad9d; --line:#2a2f24;
       --verde-bg:#1d2b16; --amarillo-bg:#2b230f; --naranja-bg:#2b1f10; --rojo-bg:#2b1513; --gris-bg:#22261f; }
-    header{background:linear-gradient(180deg,#181c13 0%, #14170f 100%);}
-    thead th{background:#181c13;}
-    #modalCard select, #modalCard input{background:#14170f;color:var(--ink);}
   }
+  :root[data-theme="dark"]{
+    --bg:#14170f; --card:#1c211a; --ink:#eef0e8; --ink-soft:#a7ad9d; --line:#2a2f24;
+    --verde-bg:#1d2b16; --amarillo-bg:#2b230f; --naranja-bg:#2b1f10; --rojo-bg:#2b1513; --gris-bg:#22261f;
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f8f4; --card:#ffffff; --ink:#2b2f26; --ink-soft:#5b6058; --line:#dfe3da;
+    --verde-bg:#eaf4e2; --amarillo-bg:#fbf1d6; --naranja-bg:#fbe6d2; --rojo-bg:#f9e0de; --gris-bg:#eceff1;
+  }
+  @media (prefers-color-scheme: dark){ header{background:linear-gradient(180deg,#181c13 0%, #14170f 100%);} thead th{background:#181c13;} #modalCard select, #modalCard input{background:#14170f;color:var(--ink);} }
+  :root[data-theme="dark"] header{background:linear-gradient(180deg,#181c13 0%, #14170f 100%);}
+  :root[data-theme="dark"] thead th{background:#181c13;}
+  :root[data-theme="dark"] #modalCard select, :root[data-theme="dark"] #modalCard input{background:#14170f;color:var(--ink);}
+  :root[data-theme="light"] header{background:linear-gradient(180deg, #ffffff 0%, #f2f6ec 100%);}
+  :root[data-theme="light"] thead th{background:#fbfbf8;}
+  :root[data-theme="light"] #modalCard select, :root[data-theme="light"] #modalCard input{background:#fff;color:var(--ink);}
+
+  /* ---------- theme toggle ---------- */
+  #themeToggle{
+    position:fixed; top:16px; right:16px; z-index:60;
+    display:flex; align-items:center; gap:6px;
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    padding:6px 12px; font-size:13px; font-weight:600; color:var(--ink-soft);
+    cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.08);
+  }
+  #themeToggle:hover{border-color:var(--brand-dark); color:var(--brand-dark);}
 </style>
 </head>
 <body>
+
+<button id="themeToggle" type="button" aria-label="Cambiar tema claro/oscuro"></button>
 
 <div id="loginScreen">
   <div class="logo">GH</div>
@@ -239,6 +268,23 @@
       .then(function (r) { return r.json(); });
   }
 
+  /* ---------- theme toggle ---------- */
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️ Modo claro' : '🌙 Modo oscuro';
+  }
+  function initTheme() {
+    var saved = localStorage.getItem('gh-theme');
+    var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(theme);
+  }
+  document.getElementById('themeToggle').addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('gh-theme', next);
+    applyTheme(next);
+  });
+  initTheme();
+
   window.onload = function () {
     google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
     google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme: 'outline', size: 'large', text: 'signin_with' });
@@ -334,11 +380,11 @@
         tr.addEventListener('click', function () { window.open('https://drive.google.com/file/d/' + item.pdf_file_id + '/view', '_blank'); });
       }
       tr.innerHTML =
-        '<td><div class="equipo-name">' + item.equipo + '</div>' + (item.serie ? '<div class="equipo-meta">N° serie: ' + item.serie + '</div>' : '') + '</td>' +
-        '<td><div>' + item.que_mide + '</div><div class="equipo-meta">' + item.marca + ' · ' + item.modelo + '</div></td>' +
-        '<td>' + (item.fecha_cal ? fmt(parseISO(item.fecha_cal)) : '—') + '</td>' +
-        '<td>' + (item.fecha_venc ? fmt(venc) : '—') + '</td>' +
-        '<td><span class="badge ' + estado + '"><span class="dot ' + estado + '"></span>' + ESTADO_LABEL[estado] + '</span>' +
+        '<td data-label="Equipo"><div class="equipo-name">' + item.equipo + '</div>' + (item.serie ? '<div class="equipo-meta">N° serie: ' + item.serie + '</div>' : '') + '</td>' +
+        '<td data-label="Qué mide / Marca / Modelo"><div>' + item.que_mide + '</div><div class="equipo-meta">' + item.marca + ' · ' + item.modelo + '</div></td>' +
+        '<td data-label="Calibración">' + (item.fecha_cal ? fmt(parseISO(item.fecha_cal)) : '—') + '</td>' +
+        '<td data-label="Vencimiento">' + (item.fecha_venc ? fmt(venc) : '—') + '</td>' +
+        '<td data-label="Estado"><span class="badge ' + estado + '"><span class="dot ' + estado + '"></span>' + ESTADO_LABEL[estado] + '</span>' +
         (diasTxt ? '<div class="dias">' + diasTxt + '</div>' : '') +
         (item.pdf_file_id ? '<div class="pdf-link">Ver certificado →</div>' : '<div class="no-pdf">' + (item.fecha_venc ? '' : 'Sin certificado en archivo') + '</div>') +
         '</td>';
